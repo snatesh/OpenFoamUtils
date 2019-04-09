@@ -15,6 +15,7 @@
 
 #include<matplotlibcpp.h>
 
+// asd;lfkjasdfkjadsf;lkj
 namespace plt = matplotlibcpp;
 
 void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_val,
@@ -69,14 +70,14 @@ int main(int argc, char* argv[])
 							<< " case.foam field_name contour_val [data_on_contour]" << std::endl;
 		exit(1);
 	}
-
+	//sdkf
   // Read the file
   vtkSmartPointer<vtkPOpenFOAMReader> reader =
     vtkSmartPointer<vtkPOpenFOAMReader>::New();
 	reader->SetCaseType(1);
 	reader->SetFileName(argv[1]);
 	reader->ListTimeStepsByControlDictOn();
-	reader->SkipZeroTimeOff();
+	reader->SkipZeroTimeOn();
 	reader->Update();
 
 	// get requested contour and data_on_contour array names, check if they exist in dataset 
@@ -119,6 +120,7 @@ int main(int argc, char* argv[])
 	for (int i = 0; i < times->GetNumberOfTuples(); ++i)
 	{
 		double time = times->GetValue(i);
+		std::cout << time << std::endl;
 		// update to current time step
 		reader->UpdateTimeStep(time);
 		// interpolate cell centered data to vertices
