@@ -1,3 +1,0 @@
-/home/sachin/Research/NYU/tsunamis/codes/VOF_Extract_Field_at_Interface/build/CMakeFiles/rebuild_cache.dir
-/home/sachin/Research/NYU/tsunamis/codes/VOF_Extract_Field_at_Interface/build/CMakeFiles/ExtractAtInterface.dir
-/home/sachin/Research/NYU/tsunamis/codes/VOF_Extract_Field_at_Interface/build/CMakeFiles/edit_cache.dir
