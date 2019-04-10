@@ -5,6 +5,7 @@
 #include <vtkPOpenFOAMReader.h>
 #include <vtkContourFilter.h>
 #include <vtkMultiBlockDataSet.h>
+#include <vtkMPIController.h>
 #include <vtkDoubleArray.h>
 #include <vtkPolyData.h>
 #include <string>
@@ -12,10 +13,9 @@
 #include <ostream>
 #include <vector>
 #include <stdlib.h>
-
+#include <mpi.h>
 #include<matplotlibcpp.h>
 
-// asd;lfkjasdfkjadsf;lkj
 namespace plt = matplotlibcpp;
 
 void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_val,
@@ -64,6 +64,10 @@ void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_
 
 int main(int argc, char* argv[])
 {
+	MPI_Init(&argc, &argv);
+	vtkMPIController* controller = vtkMPIController::New();
+  controller->Initialize(&argc, &argv, 1);
+
 	if (argc != 4 && argc != 5)
 	{
 		std::cerr << "Usage: " << argv[0] 
@@ -74,99 +78,107 @@ int main(int argc, char* argv[])
   // Read the file
   vtkSmartPointer<vtkPOpenFOAMReader> reader =
     vtkSmartPointer<vtkPOpenFOAMReader>::New();
-	reader->SetCaseType(1);
-	reader->SetFileName(argv[1]);
+	reader->SetController(controller);
+	reader->SetFileName("case.foam");
+	reader->SetCaseType(0);
 	reader->ListTimeStepsByControlDictOn();
 	reader->SkipZeroTimeOn();
 	reader->Update();
+	// get requested contour and data_on_contour array names, 
+	// check if they exist in dataset 
+	int procId = controller->GetLocalProcessId();
+	if (procId == 0)
+	{
+		std::string contourArray(argv[2]);
+		bool arrayExists = false; 
+		std::string dataOnContour(argc == 5 ? argv[4] : "");
+		bool dataArrayExists = (dataOnContour.empty() ? true : false); 
 
-	// get requested contour and data_on_contour array names, check if they exist in dataset 
-	std::string contourArray(argv[2]);
-	bool arrayExists = false; 
-	std::string dataOnContour(argc == 5 ? argv[4] : "");
-	bool dataArrayExists = (dataOnContour.empty() ? true : false); 
-
-	for (int i = 0; i < reader->GetNumberOfCellArrays(); ++i)
-	{
-		std::string arrayName(reader->GetCellArrayName(i));
-		if (arrayName.compare(contourArray) == 0)
-		{	
-			arrayExists = true;
+		for (int i = 0; i < reader->GetNumberOfCellArrays(); ++i)
+		{
+			std::string arrayName(reader->GetCellArrayName(i));
+			if (arrayName.compare(contourArray) == 0)
+			{	
+				arrayExists = true;
+			}
+			if (!dataArrayExists)
+			{	
+				if (arrayName.compare(dataOnContour) == 0)
+				{
+					dataArrayExists = true;
+				}	
+			}
 		}
-		if (!dataArrayExists)
-		{	
-			if (arrayName.compare(dataOnContour) == 0)
-			{
-				dataArrayExists = true;
-			}	
+		if (not arrayExists)
+		{
+			std::cerr << argv[2] << " does not exist in data set" << std::endl;
+			exit(1);
 		}
-	}
-	if (not arrayExists)
-	{
-		std::cerr << argv[2] << " does not exist in data set" << std::endl;
-		exit(1);
-	}
-	if (not dataArrayExists)
-	{
-		std::cerr << argv[4] << " does not exist in data set" << std::endl;
-		exit(1);
-	}
-	
-	// loop over times and contour
-	vtkSmartPointer<vtkDoubleArray> times = reader->GetTimeValues();
-	double contour_val = atof(argv[3]);
-	vtkSmartPointer<vtkContourFilter> contourFilter =
-		vtkSmartPointer<vtkContourFilter>::New();
-	for (int i = 0; i < times->GetNumberOfTuples(); ++i)
-	{
-		double time = times->GetValue(i);
-		std::cout << time << std::endl;
-		// update to current time step
-		reader->UpdateTimeStep(time);
-		// interpolate cell centered data to vertices
-  	reader->CreateCellToPointOn();
-  	reader->Update();
-  	// pull out grid
-		vtkUnstructuredGrid * currMesh = 
-			vtkUnstructuredGrid::SafeDownCast(reader->GetOutput()->GetBlock(0));
-  	currMesh->GetPointData()->SetActiveScalars(argv[2]);
-		contourFilter->SetInputData(currMesh);
+		if (not dataArrayExists)
+		{
+			std::cerr << argv[4] << " does not exist in data set" << std::endl;
+			exit(1);
+		}
 		
-		std::vector<double> heights, contourData, xaxis;
-		if (argc == 5)
+		// loop over times and contour
+		vtkSmartPointer<vtkDoubleArray> times = reader->GetTimeValues();
+		double contour_val = atof(argv[3]);
+		vtkSmartPointer<vtkContourFilter> contourFilter =
+			vtkSmartPointer<vtkContourFilter>::New();
+		//for (int i = 0; i < times->GetNumberOfTuples(); ++i)
+		for (int i = 1; i < 80; ++i)
 		{
-			getContour(contourFilter,contour_val,dataOnContour,heights,contourData,xaxis);
-			// define names for plt legend
-			plt::clf();
-			plt::subplot(2,1,1);
-			plt::named_plot("height (m)", xaxis, heights,"b.");
-			plt::xlim(0,100000);
-			plt::ylim(-1000,500);
-			plt::legend();
-			std::stringstream ss; 
-			ss << "Contour by " << contourArray << "=" << contour_val << ", Time: " << time;
-			std::string titleText(ss.str());
-			plt::title(titleText);
-			plt::grid(true);
-			plt::subplot(2,1,2);
-			plt::named_plot(dataOnContour, xaxis, contourData, "k.");
-			plt::legend();
-			plt::pause(0.0001);
-		}
-		else
-		{
-			getContour(contourFilter,contour_val, heights, xaxis);
-			plt::clf();
-			plt::named_plot("height (m)", xaxis, heights,"b.");
-			plt::xlim(0,100000);
-			plt::ylim(-1000,500);
-			plt::legend();
-			std::stringstream ss; 
-			ss << "Contour by " << contourArray << "=" << contour_val << ", Time: " << time;
-			std::string titleText(ss.str());
-			plt::title(titleText);
-			plt::grid(true);
-			plt::pause(0.0001);
+			double time = i*5.;//times->GetValue(i);
+			std::cout << time << std::endl;
+			// update to current time step
+			reader->UpdateTimeStep(time);
+			// interpolate cell centered data to vertices
+  		reader->CreateCellToPointOn();
+  		reader->Update();
+  		// pull out grid
+			vtkUnstructuredGrid * currMesh = 
+				vtkUnstructuredGrid::SafeDownCast(reader->GetOutput()->GetBlock(0));
+  		currMesh->GetPointData()->SetActiveScalars(argv[2]);
+			contourFilter->SetInputData(currMesh);
+			
+			std::vector<double> heights, contourData, xaxis;
+			if (argc == 5)
+			{
+				getContour(contourFilter,contour_val,dataOnContour,heights,contourData,xaxis);
+				// define names for plt legend
+				plt::clf();
+				plt::subplot(2,1,1);
+				plt::named_plot("height (m)", xaxis, heights,"b.");
+				plt::xlim(0,100000);
+				plt::ylim(-1000,500);
+				plt::legend();
+				std::stringstream ss; 
+				ss << "Contour by " << contourArray << "=" << contour_val << ", Time: " << time;
+				std::string titleText(ss.str());
+				plt::title(titleText);
+				plt::grid(true);
+				plt::subplot(2,1,2);
+				plt::named_plot(dataOnContour, xaxis, contourData, "k.");
+				plt::legend();
+				plt::pause(0.0001);
+			}
+			else
+			{
+				getContour(contourFilter,contour_val, heights, xaxis);
+				plt::clf();
+				plt::named_plot("height (m)", xaxis, heights,"b.");
+				plt::xlim(0,100000);
+				plt::ylim(-1000,500);
+				plt::legend();
+				std::stringstream ss; 
+				ss << "Contour by " << contourArray << "=" << contour_val << ", Time: " << time;
+				std::string titleText(ss.str());
+				plt::title(titleText);
+				plt::grid(true);
+				plt::pause(0.0001);
+			}
 		}
 	}
+	controller->Finalize();
+	controller->Delete();
 }

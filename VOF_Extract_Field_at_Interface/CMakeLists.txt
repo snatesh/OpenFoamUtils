@@ -9,12 +9,17 @@ include(${VTK_USE_FILE})
 # find python headers and lib files
 find_package(PythonLibs 2.7 REQUIRED)
 
-include_directories(${CMAKE_SOURCE_DIR}/ThirdParty/matplotlib-cpp)
+# find mpi
+find_package(MPI REQUIRED)
 
+# add matplotlib headers
+include_directories(${CMAKE_SOURCE_DIR}/ThirdParty/matplotlib-cpp)
 # add python headers
 include_directories(${PYTHON_INCLUDE_DIRS})
+# add mpi headers
+include_directories(${MPI_INCLUDE_PATH})
 
 
 add_executable(ExtractAtInterface ExtractAtInterface.C)
-target_include_directories(ExtractAtInterface PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(ExtractAtInterface ${VTK_LIBRARIES} ${PYTHON_LIBRARIES})
+#target_include_directories(ExtractAtInterface PRIVATE ${PYTHON_INCLUDE_DIRS})
+target_link_libraries(ExtractAtInterface ${VTK_LIBRARIES} ${PYTHON_LIBRARIES} ${MPI_LIBRARIES})
