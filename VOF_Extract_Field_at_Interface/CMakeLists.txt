@@ -22,7 +22,6 @@ if (ENABLE_MPI)
 endif()
 
 add_executable(ExtractAtInterface ExtractAtInterface.C)
-#target_include_directories(ExtractAtInterface PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(ExtractAtInterface ${VTK_LIBRARIES} ${PYTHON_LIBRARIES})
 if (ENABLE_MPI)
 	target_link_libraries(ExtractAtInterface ${MPI_LIBRARIES})
