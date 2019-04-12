@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
 		std::string contourArray(argv[5]);
 		bool arrayExists = false; 
 		std::string dataOnContour(argc == 8 ? argv[7] : "");
-		bool dataArrayExists = (dataOnContour.empty() ? true : false); 
+		bool dataArrayExists = dataOnContour.empty(); 
 
 		for (int i = 0; i < reader->GetNumberOfCellArrays(); ++i)
 		{
