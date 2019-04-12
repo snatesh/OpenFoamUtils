@@ -25,20 +25,20 @@ namespace plt = matplotlibcpp;
 void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_val,
 								std::vector<double>& heights, std::vector<double>& xaxis)
 {
-		contourFilter->SetValue(0,contour_val);
-		contourFilter->Update();
-		vtkSmartPointer<vtkPolyData> polys = contourFilter->GetOutput();
-		int numPoints = polys->GetNumberOfPoints();
-		for (int j = 0; j < numPoints; ++j)
-		{
-			double point[3];
-			polys->GetPoint(j,point);
-			if (point[2] == 0)
-			{
-				xaxis.push_back(point[0]);
-				heights.push_back(point[1]);
-			}	
-		}
+  contourFilter->SetValue(0,contour_val);
+  contourFilter->Update();
+  vtkSmartPointer<vtkPolyData> polys = contourFilter->GetOutput();
+  int numPoints = polys->GetNumberOfPoints();
+  for (int j = 0; j < numPoints; ++j)
+  {
+    double point[3];
+  	polys->GetPoint(j,point);
+  	if (point[2] == 0)
+  	{
+  		xaxis.push_back(point[0]);
+  		heights.push_back(point[1]);
+  	}	
+  }
 }
 
 // contour by contour_val, put y coords into heights, 
@@ -47,24 +47,24 @@ void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_
 								const std::string& dataName, std::vector<double>& heights, 
 								std::vector<double>& datas, std::vector<double>& xaxis)
 {
-		contourFilter->SetValue(0,contour_val);
-		contourFilter->Update();
-		vtkSmartPointer<vtkPolyData> polys = contourFilter->GetOutput();
-		vtkSmartPointer<vtkPointData> pd = polys->GetPointData();
-		int numPoints = polys->GetNumberOfPoints();
-		for (int j = 0; j < numPoints; ++j)
-		{
-			double point[3];
-			double data[1];
-			polys->GetPoint(j,point);
-			if (point[2] == 0)
-			{
-				xaxis.push_back(point[0]);
-				heights.push_back(point[1]);
-				pd->GetArray(dataName.c_str())->GetTuple(j,data);
-				datas.push_back(data[0]);
-			}	
-		}
+  contourFilter->SetValue(0,contour_val);
+  contourFilter->Update();
+  vtkSmartPointer<vtkPolyData> polys = contourFilter->GetOutput();
+  vtkSmartPointer<vtkPointData> pd = polys->GetPointData();
+  int numPoints = polys->GetNumberOfPoints();
+  for (int j = 0; j < numPoints; ++j)
+  {
+  	double point[3];
+  	double data[1];
+  	polys->GetPoint(j,point);
+  	if (point[2] == 0)
+  	{
+  		xaxis.push_back(point[0]);
+  		heights.push_back(point[1]);
+  		pd->GetArray(dataName.c_str())->GetTuple(j,data);
+  	  datas.push_back(data[0]);
+  	}	
+  }
 }
 
 
