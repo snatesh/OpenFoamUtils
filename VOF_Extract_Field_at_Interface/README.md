@@ -72,7 +72,7 @@ $ ./ExtractAtInterface case.foam 5 5 400 alpha.water 0.5 p_rgh
 See below for a sample movie. The domain is rectilinear and essentially 2D (one cell thick in the z-direction).
 The two fluids are air and water, and the interface is initially defined to include a parabolic crater in the
 water at the left end, which was a symmetry plane so that only half the crater is considered. The goal is to 
-extract the height of the wave (i.e. y coordinates of the interface) over time, as well as the pressure in
+extract the height of the resulting wave (i.e. y coordinates of the interface) over time, as well as the pressure in
 excess of hydrostatic at the interface. 
 
 ![Sample Frame](crater_wave.gif)
