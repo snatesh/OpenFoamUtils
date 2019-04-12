@@ -5,7 +5,6 @@
 #include <vtkPOpenFOAMReader.h>
 #include <vtkContourFilter.h>
 #include <vtkMultiBlockDataSet.h>
-
 #include <vtkDoubleArray.h>
 #include <vtkPolyData.h>
 #include <string>
@@ -18,6 +17,7 @@
 	#include <vtkMPIController.h>
 	#include <mpi.h>
 #endif
+
 namespace plt = matplotlibcpp;
 
 // contour by contour_val, put y coordinates into heights, 
