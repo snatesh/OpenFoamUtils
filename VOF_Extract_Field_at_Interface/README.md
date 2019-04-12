@@ -32,8 +32,8 @@ $ make -j6 (replace 6 with number of cores you want to use)
 This will create the executable `ExtractAtInterface`. You can either copy it
 to where it will be used, or add its absolute path to your PATH env variable. 
 Also, note that the `ENABLE_MPI` compiler flag was set to true in the above
-example. This is suitable when working with decomposed cases. If the 
-OpenFOAM utility `reconstructPar` has been run, set `-DENABLE_MPI=False`. 
+example. This is suitable when working with decomposed cases. If the OpenFOAM utility 
+`reconstructPar` has been run, set `-DENABLE_MPI=False`. 
 
 If cmake has problems finding libraries, try manually specifying paths
 to cmake via the curses-gui interface. This is done by calling 
