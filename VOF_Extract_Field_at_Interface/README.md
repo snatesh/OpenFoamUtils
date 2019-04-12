@@ -10,12 +10,12 @@ work on any linux system meeting the dependency requirements.
 ### Build Dependencies ###
 You will need to install at least the following dependencies:
 
-build-essential
-cmake
-VTK (versions 7+)
-python + matplotlib (version 2.7)
-MPI
-mencoder
+* build-essential
+* cmake
+* VTK (versions 7+)
+* python + matplotlib (version 2.7)
+* MPI
+* mencoder
 
 ### Build ExtractInterface ###
 Once the dependencies are installed, execute the following from the top 
