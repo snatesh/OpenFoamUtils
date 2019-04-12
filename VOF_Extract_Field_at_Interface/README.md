@@ -18,9 +18,13 @@ You will need to install at least the following dependencies:
 * mencoder
 
 ### Build ExtractInterface ###
-Once the dependencies are installed, execute the following from the top 
-of the source tree:
+Once the dependencies are installed, clone the repository with
 ```
+$ git clone --recurse-submodules git@github.com:snatesh/OpenFoamUtils.git
+```
+and execute the following:
+```
+$ cd OpenFoamUtils/VOF_Extract_Field_at_Interface
 $ mkdir build && cd build
 $ cmake -DENABLE_MPI=True .. 
 $ make -j6 (replace 6 with number of cores you want to use)
