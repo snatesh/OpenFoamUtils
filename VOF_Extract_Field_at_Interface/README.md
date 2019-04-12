@@ -66,4 +66,5 @@ Running it on a reconstructed case is identical, only we omit the call to `mpiru
 $ ExtractAtInterface case.foam 5 5 400 alpha.water 0.5 p_rgh
 ```
 See below for a sample frame: 
+
 ![Sample Frame](example_frame.png)
