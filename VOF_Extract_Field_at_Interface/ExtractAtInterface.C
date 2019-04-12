@@ -5,7 +5,7 @@
 #include <vtkPOpenFOAMReader.h>
 #include <vtkContourFilter.h>
 #include <vtkMultiBlockDataSet.h>
-#include <vtkMPIController.h>
+
 #include <vtkDoubleArray.h>
 #include <vtkPolyData.h>
 #include <string>
@@ -13,9 +13,11 @@
 #include <ostream>
 #include <vector>
 #include <stdlib.h>
-#include <mpi.h>
 #include<matplotlibcpp.h>
-
+#ifdef ENABLE_MPI
+	#include <vtkMPIController.h>
+	#include <mpi.h>
+#endif
 namespace plt = matplotlibcpp;
 
 // contour by contour_val, put y coordinates into heights, 
@@ -88,10 +90,11 @@ std::string trim_fname(const std::string& fname, const std::string& ext)
 
 int main(int argc, char* argv[])
 {
+	#ifdef ENABLE_MPI
 	MPI_Init(&argc, &argv);
 	vtkMPIController* controller = vtkMPIController::New();
   controller->Initialize(&argc, &argv, 1);
-
+	#endif
 	if (argc != 7 && argc != 8)
 	{
 		std::cerr << "Usage: " << argv[0] 
@@ -101,15 +104,21 @@ int main(int argc, char* argv[])
   // Read the file
   vtkSmartPointer<vtkPOpenFOAMReader> reader =
     vtkSmartPointer<vtkPOpenFOAMReader>::New();
+	#ifdef ENABLE_MPI
 	reader->SetController(controller);
-	reader->SetFileName(argv[1]);
 	reader->SetCaseType(0);
+	int procId = controller->GetLocalProcessId();
+	#else
+	reader->SetCaseType(1);
+	int procId = 0;
+	#endif
+	reader->SetFileName(argv[1]);
 	reader->ListTimeStepsByControlDictOn();
 	reader->SkipZeroTimeOn();
 	reader->Update();
+	std::cout << "PROCID: " << procId << std::endl;
 	// get requested contour and data_on_contour array names, 
 	// check if they exist in dataset 
-	int procId = controller->GetLocalProcessId();
 	if (procId == 0)
 	{
 		std::string contourArray(argv[5]);
@@ -191,7 +200,7 @@ int main(int argc, char* argv[])
 				plt::grid(true);	
 				plt::legend();
 				plt::save(figName);
-				//plt::pause(0.0001);
+				plt::pause(0.0001);
 			}
 			else
 			{
@@ -207,11 +216,13 @@ int main(int argc, char* argv[])
 				plt::title(titleText);
 				plt::grid(true);
 				plt::save(figName);
-				//plt::pause(0.0001);
+				plt::pause(0.0001);
 			}
 		}
 	}
+	#ifdef ENABLE_MPI
 	controller->Finalize();
 	controller->Delete();
+	#endif
 	return 0;
 }
