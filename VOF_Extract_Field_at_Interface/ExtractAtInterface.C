@@ -18,6 +18,8 @@
 
 namespace plt = matplotlibcpp;
 
+// contour by contour_val, put y coordinates into heights, 
+// and x coordinates into xaxis
 void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_val,
 								std::vector<double>& heights, std::vector<double>& xaxis)
 {
@@ -37,10 +39,11 @@ void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_
 		}
 }
 
-
+// contour by contour_val, put y coords into heights, 
+// data with name dataName into datas and x coords into xaxis
 void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_val, 
-								const std::string& dataName, std::vector<double>& heights, std::vector<double>& datas, 
-								std::vector<double>& xaxis)
+								const std::string& dataName, std::vector<double>& heights, 
+								std::vector<double>& datas, std::vector<double>& xaxis)
 {
 		contourFilter->SetValue(0,contour_val);
 		contourFilter->Update();
@@ -62,24 +65,44 @@ void getContour(vtkSmartPointer<vtkContourFilter> contourFilter, double contour_
 		}
 }
 
+
+// trim extension off of filename 
+std::string trim_fname(const std::string& fname, const std::string& ext)
+{
+  size_t beg = 0;
+  size_t end = fname.find_last_of('.');
+  std::string name;
+  if (end != -1) 
+  {
+    name = fname.substr(beg,end);
+    name.append(ext);
+    return name;
+  }
+
+  else 
+  {
+    std::cout << "Error finding file extension for " << fname << std::endl;
+    exit(1);
+  }
+}  
+
 int main(int argc, char* argv[])
 {
 	MPI_Init(&argc, &argv);
 	vtkMPIController* controller = vtkMPIController::New();
   controller->Initialize(&argc, &argv, 1);
 
-	if (argc != 4 && argc != 5)
+	if (argc != 7 && argc != 8)
 	{
 		std::cerr << "Usage: " << argv[0] 
-							<< " case.foam field_name contour_val [data_on_contour]" << std::endl;
+							<< " case.foam beg stride end field_name contour_val [data_on_contour]\n"; 
 		exit(1);
 	}
-	//sdkf
   // Read the file
   vtkSmartPointer<vtkPOpenFOAMReader> reader =
     vtkSmartPointer<vtkPOpenFOAMReader>::New();
 	reader->SetController(controller);
-	reader->SetFileName("case.foam");
+	reader->SetFileName(argv[1]);
 	reader->SetCaseType(0);
 	reader->ListTimeStepsByControlDictOn();
 	reader->SkipZeroTimeOn();
@@ -89,9 +112,9 @@ int main(int argc, char* argv[])
 	int procId = controller->GetLocalProcessId();
 	if (procId == 0)
 	{
-		std::string contourArray(argv[2]);
+		std::string contourArray(argv[5]);
 		bool arrayExists = false; 
-		std::string dataOnContour(argc == 5 ? argv[4] : "");
+		std::string dataOnContour(argc == 8 ? argv[7] : "");
 		bool dataArrayExists = (dataOnContour.empty() ? true : false); 
 
 		for (int i = 0; i < reader->GetNumberOfCellArrays(); ++i)
@@ -111,25 +134,28 @@ int main(int argc, char* argv[])
 		}
 		if (not arrayExists)
 		{
-			std::cerr << argv[2] << " does not exist in data set" << std::endl;
+			std::cerr << argv[5] << " does not exist in data set" << std::endl;
 			exit(1);
 		}
 		if (not dataArrayExists)
 		{
-			std::cerr << argv[4] << " does not exist in data set" << std::endl;
+			std::cerr << argv[7] << " does not exist in data set" << std::endl;
 			exit(1);
 		}
 		
 		// loop over times and contour
-		vtkSmartPointer<vtkDoubleArray> times = reader->GetTimeValues();
-		double contour_val = atof(argv[3]);
+		double beg, stride, end, contour_val;
+		beg = atof(argv[2]);
+		stride = atof(argv[3]);
+   	end = atof(argv[4]);
+		contour_val = atof(argv[6]);
 		vtkSmartPointer<vtkContourFilter> contourFilter =
 			vtkSmartPointer<vtkContourFilter>::New();
-		//for (int i = 0; i < times->GetNumberOfTuples(); ++i)
-		for (int i = 1; i < 80; ++i)
+		double nT = (end-beg)/stride;
+		for (int i = 0; i <= nT; ++i)
 		{
-			double time = i*5.;//times->GetValue(i);
-			std::cout << time << std::endl;
+			double time = i*stride+beg;
+			std::cout << "TIME: " << time << std::endl;
 			// update to current time step
 			reader->UpdateTimeStep(time);
 			// interpolate cell centered data to vertices
@@ -138,11 +164,12 @@ int main(int argc, char* argv[])
   		// pull out grid
 			vtkUnstructuredGrid * currMesh = 
 				vtkUnstructuredGrid::SafeDownCast(reader->GetOutput()->GetBlock(0));
-  		currMesh->GetPointData()->SetActiveScalars(argv[2]);
+  		currMesh->GetPointData()->SetActiveScalars(argv[5]);
 			contourFilter->SetInputData(currMesh);
-			
+			std::stringstream ss; ss << "Time" << time << ".png"; 
+			std::string figName(trim_fname(argv[1],ss.str())); 
 			std::vector<double> heights, contourData, xaxis;
-			if (argc == 5)
+			if (argc == 8)
 			{
 				getContour(contourFilter,contour_val,dataOnContour,heights,contourData,xaxis);
 				// define names for plt legend
@@ -159,8 +186,12 @@ int main(int argc, char* argv[])
 				plt::grid(true);
 				plt::subplot(2,1,2);
 				plt::named_plot(dataOnContour, xaxis, contourData, "k.");
+				plt::xlim(0,100000);
+				plt::ylim(-5000000,2000000);
+				plt::grid(true);	
 				plt::legend();
-				plt::pause(0.0001);
+				plt::save(figName);
+				//plt::pause(0.0001);
 			}
 			else
 			{
@@ -175,10 +206,12 @@ int main(int argc, char* argv[])
 				std::string titleText(ss.str());
 				plt::title(titleText);
 				plt::grid(true);
-				plt::pause(0.0001);
+				plt::save(figName);
+				//plt::pause(0.0001);
 			}
 		}
 	}
 	controller->Finalize();
 	controller->Delete();
+	return 0;
 }
