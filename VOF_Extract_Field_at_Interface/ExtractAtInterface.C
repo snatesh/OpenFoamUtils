@@ -88,6 +88,23 @@ std::string trim_fname(const std::string& fname, const std::string& ext)
   }
 }  
 
+struct Args 
+{
+  std::string caseName;
+  double beg;
+  double stride;
+  double end;
+  std::string contourArray;
+  double contour_val;
+  double xmin;
+  double xmax;
+  double ymin;
+  double ymax;
+  std::string dataOnContour;
+  double dymin;
+  double dymax;
+};
+
 int main(int argc, char* argv[])
 {
 	#ifdef ENABLE_MPI
@@ -95,12 +112,25 @@ int main(int argc, char* argv[])
 	vtkMPIController* controller = vtkMPIController::New();
   controller->Initialize(&argc, &argv, 1);
 	#endif
-	if (argc != 7 && argc != 8)
+	if (argc < 7)
 	{
 		std::cerr << "Usage: " << argv[0] 
-							<< " case.foam beg stride end field_name contour_val [data_on_contour]\n"; 
+							<< " case.foam beg stride end field_name contour_val"
+              << " [xmin xmax ymin ymax data_on_contour ymin ymax]\n"; 
 		exit(1);
 	}
+
+  Args args = 
+    {argv[1],atof(argv[2]),atof(argv[3]),atof(argv[4]),argv[5],atof(argv[6])};
+  args.xmin = (argc >= 8 ? atof(argv[7]) : INFINITY);
+  args.xmax = (argc >= 9 ? atof(argv[8]) : INFINITY); 
+  args.ymin = (argc >= 10 ? atof(argv[9]) : INFINITY);
+  args.ymax = (argc >= 11 ? atof(argv[10]) : INFINITY); 
+  args.dataOnContour = (argc >= 12 ? argv[11] : "");
+  args.dymin = (argc >= 13 ? atof(argv[12]) : INFINITY);
+  args.dymax = (argc == 14 ? atof(argv[13]) : INFINITY); 
+  std::cout << args.xmin << " " << args.xmax << std::endl;
+  std::cout << args.ymin << " " << args.ymax << std::endl;
   // Read the file
   vtkSmartPointer<vtkPOpenFOAMReader> reader =
     vtkSmartPointer<vtkPOpenFOAMReader>::New();
@@ -112,30 +142,27 @@ int main(int argc, char* argv[])
 	reader->SetCaseType(1);
 	int procId = 0;
 	#endif
-	reader->SetFileName(argv[1]);
+	reader->SetFileName(args.caseName.c_str());
 	reader->ListTimeStepsByControlDictOn();
 	reader->SkipZeroTimeOn();
 	reader->Update();
-	std::cout << "PROCID: " << procId << std::endl;
 	// get requested contour and data_on_contour array names, 
 	// check if they exist in dataset 
 	if (procId == 0)
 	{
-		std::string contourArray(argv[5]);
 		bool arrayExists = false; 
-		std::string dataOnContour(argc == 8 ? argv[7] : "");
-		bool dataArrayExists = dataOnContour.empty(); 
+		bool dataArrayExists = args.dataOnContour.empty(); 
 
 		for (int i = 0; i < reader->GetNumberOfCellArrays(); ++i)
 		{
 			std::string arrayName(reader->GetCellArrayName(i));
-			if (arrayName.compare(contourArray) == 0)
+			if (arrayName.compare(args.contourArray) == 0)
 			{	
 				arrayExists = true;
 			}
 			if (!dataArrayExists)
 			{	
-				if (arrayName.compare(dataOnContour) == 0)
+				if (arrayName.compare(args.dataOnContour) == 0)
 				{
 					dataArrayExists = true;
 				}	
@@ -143,27 +170,22 @@ int main(int argc, char* argv[])
 		}
 		if (not arrayExists)
 		{
-			std::cerr << argv[5] << " does not exist in data set" << std::endl;
+			std::cerr << args.contourArray << " does not exist in data set" << std::endl;
 			exit(1);
 		}
 		if (not dataArrayExists)
 		{
-			std::cerr << argv[7] << " does not exist in data set" << std::endl;
+			std::cerr << args.dataOnContour << " does not exist in data set" << std::endl;
 			exit(1);
 		}
 		
 		// loop over times and contour
-		double beg, stride, end, contour_val;
-		beg = atof(argv[2]);
-		stride = atof(argv[3]);
-   	end = atof(argv[4]);
-		contour_val = atof(argv[6]);
 		vtkSmartPointer<vtkContourFilter> contourFilter =
 			vtkSmartPointer<vtkContourFilter>::New();
-		double nT = (end-beg)/stride;
+		double nT = (args.end-args.beg)/args.stride;
 		for (int i = 0; i <= nT; ++i)
 		{
-			double time = i*stride+beg;
+			double time = i*args.stride+args.beg;
 			std::cout << "TIME: " << time << std::endl;
 			// update to current time step
 			reader->UpdateTimeStep(time);
@@ -173,30 +195,34 @@ int main(int argc, char* argv[])
   		// pull out grid
 			vtkUnstructuredGrid * currMesh = 
 				vtkUnstructuredGrid::SafeDownCast(reader->GetOutput()->GetBlock(0));
-  		currMesh->GetPointData()->SetActiveScalars(argv[5]);
+  		currMesh->GetPointData()->SetActiveScalars(args.contourArray.c_str());
 			contourFilter->SetInputData(currMesh);
 			std::stringstream ss; ss << "Time" << time << ".png"; 
-			std::string figName(trim_fname(argv[1],ss.str())); 
+			std::string figName(trim_fname(args.caseName,ss.str())); 
 			std::vector<double> heights, contourData, xaxis;
-			if (argc == 8)
+			if (argc >= 12)
 			{
-				getContour(contourFilter,contour_val,dataOnContour,heights,contourData,xaxis);
+				getContour(contourFilter,args.contour_val,args.dataOnContour,heights,contourData,xaxis);
 				// define names for plt legend
 				plt::clf();
 				plt::subplot(2,1,1);
 				plt::named_plot("height (m)", xaxis, heights,"b.");
-				plt::xlim(0,100000);
-				plt::ylim(-1000,500);
-				plt::legend();
+				if (!(isinf(args.xmin)  || isinf(args.xmax)))
+          plt::xlim(args.xmin,args.xmax);
+				if (!(isinf(args.ymin) || isinf(args.ymax)))
+          plt::ylim(args.ymin,args.ymax);
+        plt::legend();
 				std::stringstream ss; 
-				ss << "Contour by " << contourArray << "=" << contour_val << ", Time: " << time;
+				ss << "Contour by " << args.contourArray << "=" << args.contour_val << ", Time: " << time;
 				std::string titleText(ss.str());
 				plt::title(titleText);
 				plt::grid(true);
 				plt::subplot(2,1,2);
-				plt::named_plot(dataOnContour, xaxis, contourData, "k.");
-				plt::xlim(0,100000);
-				plt::ylim(-5000000,2000000);
+				plt::named_plot(args.dataOnContour, xaxis, contourData, "k.");
+				if (!(isinf(args.xmin)  || isinf(args.xmax)))
+          plt::xlim(args.xmin,args.xmax);
+				if (!(isinf(args.dymin) || isinf(args.dymax)))
+          plt::ylim(args.dymin,args.dymax);
 				plt::grid(true);	
 				plt::legend();
 				plt::save(figName);
@@ -204,14 +230,16 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
-				getContour(contourFilter,contour_val, heights, xaxis);
+				getContour(contourFilter,args.contour_val, heights, xaxis);
 				plt::clf();
 				plt::named_plot("height (m)", xaxis, heights,"b.");
-				plt::xlim(0,100000);
-				plt::ylim(-1000,500);
+				if (!(isinf(args.xmin) || isinf(args.xmax)))
+          plt::xlim(args.xmin,args.xmax);
+				if (!(isinf(args.ymin) || isinf(args.ymax)))
+          plt::ylim(args.ymin,args.ymax);
 				plt::legend();
 				std::stringstream ss; 
-				ss << "Contour by " << contourArray << "=" << contour_val << ", Time: " << time;
+				ss << "Contour by " << args.contourArray << "=" << args.contour_val << ", Time: " << time;
 				std::string titleText(ss.str());
 				plt::title(titleText);
 				plt::grid(true);
