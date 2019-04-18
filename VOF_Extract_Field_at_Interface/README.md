@@ -32,8 +32,8 @@ $ make -j6 (replace 6 with number of cores you want to use)
 This will create the executable `ExtractAtInterface`. You can either copy it
 to where it will be used, or add its absolute path to your PATH env variable. 
 Also, note that the `ENABLE_MPI` compiler flag was set to true in the above
-example. This is suitable when working with decomposed cases. If the 
-OpenFOAM utility `reconstructPar` has been run, set `-DENABLE_MPI=False`. 
+example. This is suitable when working with decomposed cases. If the OpenFOAM utility 
+`reconstructPar` has been run,  set `DENABLE_MPI=False`. 
 
 If cmake has problems finding libraries, try manually specifying paths
 to cmake via the curses-gui interface. This is done by calling 
@@ -69,6 +69,10 @@ Running it on a reconstructed case is identical, only we omit the call to `mpiru
 ```
 $ ./ExtractAtInterface case.foam 5 5 400 alpha.water 0.5 0 100000 -1000 500 p_rgh
 ```
-See below for a sample movie: 
+See below for a sample movie. The domain is rectilinear and essentially 2D (one cell thick in the z-direction).
+The two fluids are air and water, and the interface is initially defined to include a parabolic crater in the
+water at the left end, which was a symmetry plane so that only half the crater is considered. The goal is to 
+extract the height of the resulting wave (i.e. y coordinates of the interface) over time, as well as the pressure in
+excess of hydrostatic at the interface. 
 
 ![Sample Frame](crater_wave.gif)
