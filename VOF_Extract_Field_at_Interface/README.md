@@ -14,7 +14,6 @@ You will need to install at least the following dependencies:
 * cmake
 * VTK (versions 7+)
 * python + matplotlib (version 2.7)
-* MPI (if using it with decomposed cases)
 * mencoder
 
 ### Build ExtractInterface ###
@@ -26,17 +25,13 @@ and execute the following:
 ```
 $ cd OpenFoamUtils/VOF_Extract_Field_at_Interface
 $ mkdir build && cd build
-$ cmake -DENABLE_MPI=True .. 
+$ cmake .. 
 $ make -j6 (replace 6 with number of cores you want to use)
 ```
 This will create the executable `ExtractAtInterface`. You can either copy it
-to where it will be used, or add its absolute path to your PATH env variable. 
-Also, note that the `ENABLE_MPI` compiler flag was set to true in the above
-example. This is suitable when working with decomposed cases. If the OpenFOAM utility 
-`reconstructPar` has been run,  set `DENABLE_MPI=False`. 
-
-If cmake has problems finding libraries, try manually specifying paths
-to cmake via the curses-gui interface. This is done by calling 
+to where it will be used, or add its absolute path to your PATH env variable. If cmake 
+has problems finding libraries, try manually specifying paths to cmake via the curses-gui 
+interface. This is done by calling 
 ```
 $ ccmake .
 ```
@@ -51,7 +46,7 @@ The time directories are located in `processor0`,`processor1`, ..., `processor5`
 We execute something like the following:
 ```
 $ touch case.foam
-$ mpirun -np 6 ./ExtractAtInterface input.json
+$ ./ExtractAtInterface input.json
 $ bash animate.sh
 ```
 The output will be an avi file `output.avi`, whose name can be changed by editing
@@ -59,6 +54,7 @@ line 12 in `animate.sh` before executing the script. The json input file looks l
 ```json
 {
   "Case Name": "case.foam",
+  "Case Type": "decomposed",
   "Times": {
     "start": 5,
     "stride": 5,
@@ -88,10 +84,6 @@ as indicated in the json file. If `Write` is set to 1, comma separted text dumps
 heights and data over time are generated as well. All fields before the first `xmin` are required.
 The rest are optional. This is useful if you don't know what axis limits to specify at first.
 
-Running it on a reconstructed case is identical, only we omit the call to `mpirun`:
-```
-$ ./ExtractAtInterface input.json
-```
 See below for a sample movie. The domain is rectilinear and essentially 2D (one cell thick in the z-direction).
 The two fluids are air and water, and the interface is initially defined to include a parabolic crater in the
 water at the left end, which was a symmetry plane so that only half the crater is considered. The goal is to 
