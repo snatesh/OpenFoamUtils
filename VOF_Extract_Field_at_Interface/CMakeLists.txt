@@ -8,8 +8,9 @@ include(${VTK_USE_FILE})
 # find python headers and lib files
 find_package(PythonLibs 2.7 REQUIRED)
 
-# add matplotlib headers
+# add thirdparty headers
 include_directories(${CMAKE_SOURCE_DIR}/ThirdParty/matplotlib-cpp)
+include_directories(${CMAKE_SOURCE_DIR}/ThirdParty/jsoncons/include)
 # add python headers
 include_directories(${PYTHON_INCLUDE_DIRS})
 

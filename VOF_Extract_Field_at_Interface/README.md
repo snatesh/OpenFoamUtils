@@ -51,23 +51,46 @@ The time directories are located in `processor0`,`processor1`, ..., `processor5`
 We execute something like the following:
 ```
 $ touch case.foam
-$ mpirun -np 6 ./ExtractAtInterface case.foam <start> <stride> <end> <interface_field> <contour_val> [<xmin> <xmax> <ymin> <ymax> <data_on_contour> [<ymin> <ymax>]]
+$ mpirun -np 6 ./ExtractAtInterface input.json
 $ bash animate.sh
 ```
 The output will be an avi file `output.avi`, whose name can be changed by editing
-line 12 in `animate.sh` before executing the script. For a concrete example, consider
-```
-$ mpirun -np 6 ./ExtractAtInterface case.foam 5 5 400 alpha.water 0.5 0 100000 -1000 500 p_rgh
+line 12 in `animate.sh` before executing the script. The json input file looks like 
+```json
+{
+  "Case Name": "case.foam",
+  "Times": {
+    "start": 5,
+    "stride": 5,
+    "end": 400 
+  },  
+  "Contour": {
+    "array": "alpha.water",
+    "value": 0.5,
+    "xmin": 0,
+    "xmax": 100000,
+    "ymin": -1000,
+    "ymax": 500,
+    "data": {
+      "name": "p_rgh",
+      "ymin": -5000000,
+      "ymax": 2000000
+    }   
+  },  
+  "Write": 1
+}
 ```
 In this case, there were 80 time (including 0) directories in each `processor` folder, 
 and they were written every 5 seconds for a total of 400 s simulation time. Each frame 
 of the avi file is a plot of the y coordinate of the interface, defined as alpha.water=0.5, 
-and another plot of p_rgh at the interface, starting at t = 5s.  
+and another plot of p_rgh at the interface, starting at t = 5s. The axis limits were specified
+as indicated in the json file. If `Write` is set to 1, comma separted text dumps of the xaxis,
+heights and data over time are generated as well. 
 
 
 Running it on a reconstructed case is identical, only we omit the call to `mpirun`:
 ```
-$ ./ExtractAtInterface case.foam 5 5 400 alpha.water 0.5 0 100000 -1000 500 p_rgh
+$ ./ExtractAtInterface input.json
 ```
 See below for a sample movie. The domain is rectilinear and essentially 2D (one cell thick in the z-direction).
 The two fluids are air and water, and the interface is initially defined to include a parabolic crater in the

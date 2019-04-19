@@ -13,6 +13,7 @@
 #include <vector>
 #include <stdlib.h>
 #include<matplotlibcpp.h>
+#include<jsoncons/json.hpp>
 #ifdef ENABLE_MPI
 	#include <vtkMPIController.h>
 	#include <mpi.h>
@@ -83,10 +84,28 @@ std::string trim_fname(const std::string& fname, const std::string& ext)
 
   else 
   {
-    std::cout << "Error finding file extension for " << fname << std::endl;
+    std::cerr << "Error finding file extension for " << fname << std::endl;
     exit(1);
   }
 }  
+
+void write(const std::vector<std::vector<double>>& data, const std::string& name)
+{
+  std::ofstream outputstream(name);
+  if (!outputstream.good())
+  {
+    std::cerr << "Error creating file " << name << std::endl;
+    exit(1);
+  }
+  for (int j = 0; j < data.size(); ++j)
+  {
+    for (int i = 0; i < data[j].size(); ++i)
+    {
+      outputstream << data[j][i] << ",";
+    }
+    outputstream << std::endl;
+  }
+}
 
 struct Args 
 {
@@ -103,7 +122,54 @@ struct Args
   std::string dataOnContour;
   double dymin;
   double dymax;
+  bool write;
 };
+
+Args readJSON(jsoncons::json inputjson)
+{
+  Args args;
+  // required arguments
+  args.caseName = inputjson["Case Name"].as<std::string>();
+  args.beg = inputjson["Times"]["start"].as<double>();
+  args.stride = inputjson["Times"]["stride"].as<double>();
+  args.end = inputjson["Times"]["end"].as<double>();
+  jsoncons::json contouropt = inputjson["Contour"];
+  args.contourArray = contouropt["array"].as<std::string>();
+  args.contour_val = contouropt["value"].as<double>();
+  // optional
+  if (contouropt.has_key("xmin"))
+    args.xmin = contouropt["xmin"].as<double>();
+  else
+    args.xmin = INFINITY;
+  if (contouropt.has_key("xmax"))
+    args.xmax = contouropt["xmax"].as<double>();
+  else
+    args.xmax = INFINITY;
+  if (contouropt.has_key("ymin"))
+    args.ymin = contouropt["ymin"].as<double>();
+  else
+    args.ymin = INFINITY;
+  if (contouropt.has_key("ymax"))
+    args.ymax = contouropt["ymax"].as<double>();
+  else
+    args.ymax = INFINITY;
+  if (contouropt.has_key("data"))
+  {
+    args.dataOnContour = contouropt["data"]["name"].as<std::string>();
+    if (contouropt["data"].has_key("ymin"))
+      args.dymin = contouropt["data"]["ymin"].as<double>();
+    else
+      args.dymin = INFINITY;
+    if (contouropt["data"].has_key("ymax"))
+      args.dymax = contouropt["data"]["ymax"].as<double>();
+    else
+      args.dymax = INFINITY;
+  }
+  else
+    args.dataOnContour = "";
+  args.write = inputjson["Write"].as<bool>(); 
+  return args;
+}
 
 int main(int argc, char* argv[])
 {
@@ -112,25 +178,24 @@ int main(int argc, char* argv[])
 	vtkMPIController* controller = vtkMPIController::New();
   controller->Initialize(&argc, &argv, 1);
 	#endif
-	if (argc < 7)
-	{
-		std::cerr << "Usage: " << argv[0] 
-							<< " case.foam beg stride end field_name contour_val"
-              << " [xmin xmax ymin ymax data_on_contour ymin ymax]\n"; 
-		exit(1);
-	}
 
-  Args args = 
-    {argv[1],atof(argv[2]),atof(argv[3]),atof(argv[4]),argv[5],atof(argv[6])};
-  args.xmin = (argc >= 8 ? atof(argv[7]) : INFINITY);
-  args.xmax = (argc >= 9 ? atof(argv[8]) : INFINITY); 
-  args.ymin = (argc >= 10 ? atof(argv[9]) : INFINITY);
-  args.ymax = (argc >= 11 ? atof(argv[10]) : INFINITY); 
-  args.dataOnContour = (argc >= 12 ? argv[11] : "");
-  args.dymin = (argc >= 13 ? atof(argv[12]) : INFINITY);
-  args.dymax = (argc == 14 ? atof(argv[13]) : INFINITY); 
-  std::cout << args.xmin << " " << args.xmax << std::endl;
-  std::cout << args.ymin << " " << args.ymax << std::endl;
+  if (argc != 2)
+  {
+    std::cerr << "Usage: " << argv[0] << "input.json\n";
+    exit(1);
+  }
+
+  std::string jsonf(argv[1]);
+  std::ifstream inputStream(jsonf);
+  if (!inputStream.good())
+  {
+    std::cerr << "Error opening file " << jsonf << std::endl;
+    exit(1);
+  }
+  jsoncons::json inputjson;
+  inputStream >> inputjson;
+  Args args = readJSON(inputjson);
+
   // Read the file
   vtkSmartPointer<vtkPOpenFOAMReader> reader =
     vtkSmartPointer<vtkPOpenFOAMReader>::New();
@@ -183,7 +248,10 @@ int main(int argc, char* argv[])
 		vtkSmartPointer<vtkContourFilter> contourFilter =
 			vtkSmartPointer<vtkContourFilter>::New();
 		double nT = (args.end-args.beg)/args.stride;
-		for (int i = 0; i <= nT; ++i)
+    std::vector<std::vector<double>> heightsOverTime;
+    std::vector<std::vector<double>> xAxesOverTime;
+    std::vector<std::vector<double>> dataOverTime;
+    for (int i = 0; i <= nT; ++i)
 		{
 			double time = i*args.stride+args.beg;
 			std::cout << "TIME: " << time << std::endl;
@@ -200,10 +268,16 @@ int main(int argc, char* argv[])
 			std::stringstream ss; ss << "Time" << time << ".png"; 
 			std::string figName(trim_fname(args.caseName,ss.str())); 
 			std::vector<double> heights, contourData, xaxis;
-			if (argc >= 12)
+			if (dataArrayExists)
 			{
 				getContour(contourFilter,args.contour_val,args.dataOnContour,heights,contourData,xaxis);
-				// define names for plt legend
+        if (args.write)
+        {
+          xAxesOverTime.push_back(xaxis);
+          heightsOverTime.push_back(heights);
+          dataOverTime.push_back(contourData);
+        }
+        // define names for plt legend
 				plt::clf();
 				plt::subplot(2,1,1);
 				plt::named_plot("height (m)", xaxis, heights,"b.");
@@ -212,8 +286,8 @@ int main(int argc, char* argv[])
 				if (!(isinf(args.ymin) || isinf(args.ymax)))
           plt::ylim(args.ymin,args.ymax);
         plt::legend();
-				std::stringstream ss; 
-				ss << "Contour by " << args.contourArray << "=" << args.contour_val << ", Time: " << time;
+        std::stringstream ss; 
+				ss<<"Contour by "<<args.contourArray<<"="<<args.contour_val<<", Time: "<<time;
 				std::string titleText(ss.str());
 				plt::title(titleText);
 				plt::grid(true);
@@ -231,7 +305,12 @@ int main(int argc, char* argv[])
 			else
 			{
 				getContour(contourFilter,args.contour_val, heights, xaxis);
-				plt::clf();
+				if (args.write)
+        {
+          xAxesOverTime.push_back(xaxis);
+          heightsOverTime.push_back(xaxis);
+        }
+        plt::clf();
 				plt::named_plot("height (m)", xaxis, heights,"b.");
 				if (!(isinf(args.xmin) || isinf(args.xmax)))
           plt::xlim(args.xmin,args.xmax);
@@ -239,14 +318,25 @@ int main(int argc, char* argv[])
           plt::ylim(args.ymin,args.ymax);
 				plt::legend();
 				std::stringstream ss; 
-				ss << "Contour by " << args.contourArray << "=" << args.contour_val << ", Time: " << time;
+				ss<<"Contour by "<<args.contourArray<<"="<<args.contour_val<<", Time: "<< time;
 				std::string titleText(ss.str());
 				plt::title(titleText);
 				plt::grid(true);
 				plt::save(figName);
 				plt::pause(0.0001);
 			}
-		}
+		} 
+    if(args.write)
+    {
+      write(xAxesOverTime, "xAxesOverTime.txt");
+      write(heightsOverTime,"heightsOverTime.txt"); 
+      if (dataArrayExists)
+      {
+        std::stringstream ss;
+        ss << args.dataOnContour << "overTime.txt";
+        write(dataOverTime,ss.str());
+      } 
+    }
 	}
 	#ifdef ENABLE_MPI
 	controller->Finalize();
