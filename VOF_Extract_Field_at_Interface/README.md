@@ -85,8 +85,8 @@ and they were written every 5 seconds for a total of 400 s simulation time. Each
 of the avi file is a plot of the y coordinate of the interface, defined as alpha.water=0.5, 
 and another plot of p_rgh at the interface, starting at t = 5s. The axis limits were specified
 as indicated in the json file. If `Write` is set to 1, comma separted text dumps of the xaxis,
-heights and data over time are generated as well. 
-
+heights and data over time are generated as well. All fields before the first `xmin` are required.
+The rest are optional. This is useful if you don't know what axis limits to specify at first.
 
 Running it on a reconstructed case is identical, only we omit the call to `mpirun`:
 ```
