@@ -1,3 +1,6 @@
 [submodule "VOF_Extract_Field_at_Interface/ThirdParty/matplotlib-cpp"]
 	path = VOF_Extract_Field_at_Interface/ThirdParty/matplotlib-cpp
 	url = https://github.com/lava/matplotlib-cpp.git
+[submodule "VOF_Extract_Field_at_Interface/ThirdParty/jsoncons"]
+	path = VOF_Extract_Field_at_Interface/ThirdParty/jsoncons
+	url = https://github.com/danielaparker/jsoncons.git
