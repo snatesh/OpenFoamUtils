@@ -85,24 +85,6 @@ std::string trim_fname(const std::string& fname, const std::string& ext)
   }
 }  
 
-void write(const std::vector<std::vector<double>>& data, const std::string& name)
-{
-  std::ofstream outputstream(name);
-  if (!outputstream.good())
-  {
-    std::cerr << "Error creating file " << name << std::endl;
-    exit(1);
-  }
-  for (int j = 0; j < data.size(); ++j)
-  {
-    for (int i = 0; i < data[j].size(); ++i)
-    {
-      outputstream << data[j][i] << ",";
-    }
-    outputstream << std::endl;
-  }
-}
-
 struct Args 
 {
   std::string caseName;
@@ -234,9 +216,6 @@ int main(int argc, char* argv[])
 	vtkSmartPointer<vtkContourFilter> contourFilter =
 		vtkSmartPointer<vtkContourFilter>::New();
 	double nT = (args.end-args.beg)/args.stride;
-  std::vector<std::vector<double>> heightsOverTime;
-  std::vector<std::vector<double>> xAxesOverTime;
-  std::vector<std::vector<double>> dataOverTime;
   for (int i = 0; i <= nT; ++i)
 	{
 		double time = i*args.stride+args.beg;
@@ -257,12 +236,6 @@ int main(int argc, char* argv[])
 		if (dataArrayExists)
 		{
 			getContour(contourFilter,args.contour_val,args.dataOnContour,heights,contourData,xaxis);
-      if (args.write)
-      {
-        xAxesOverTime.push_back(xaxis);
-        heightsOverTime.push_back(heights);
-        dataOverTime.push_back(contourData);
-      }
       // define names for plt legend
 			plt::clf();
 			plt::subplot(2,1,1);
@@ -291,11 +264,6 @@ int main(int argc, char* argv[])
 		else
 		{
 			getContour(contourFilter,args.contour_val, heights, xaxis);
-			if (args.write)
-      {
-        xAxesOverTime.push_back(xaxis);
-        heightsOverTime.push_back(xaxis);
-      }
       plt::clf();
 			plt::named_plot("height (m)", xaxis, heights,"b.");
 			if (!(isinf(args.xmin) || isinf(args.xmax)))
@@ -311,17 +279,23 @@ int main(int argc, char* argv[])
 			plt::save(figName);
 			plt::pause(0.0001);
 		}
-	} 
-  if(args.write)
-  {
-    write(xAxesOverTime, "xAxesOverTime.txt");
-    write(heightsOverTime,"heightsOverTime.txt"); 
-    if (dataArrayExists)
+    if (args.write)
     {
       std::stringstream ss;
-      ss << args.dataOnContour << "overTime.txt";
-      write(dataOverTime,ss.str());
-    } 
-  }
+      ss << "OpenFoamframeNo" << i+1 << ".txt";
+      std::ofstream outputStream(ss.str());
+      if (!outputStream.good())
+      {
+        std::cerr << "Error creating file " << ss.str() << std::endl;
+        exit(1);
+      }
+      for (int i = 0; i  < heights.size(); ++i)
+      {
+        outputStream << std::internal << setw(4) << setfill('0') << xaxis[i] << " ";
+        outputStream << std::internal << setw(4) << setfill('0') << heights[i] << std::endl;
+      }
+      outputStream.close();
+    }
+	} 
 	return 0;
 }
