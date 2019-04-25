@@ -1,6 +1,9 @@
 [submodule "VOF_Extract_Field_at_Interface/ThirdParty/matplotlib-cpp"]
-	path = VOF_Extract_Field_at_Interface/ThirdParty/matplotlib-cpp
+	path = ThirdParty/matplotlib-cpp
 	url = https://github.com/lava/matplotlib-cpp.git
 [submodule "VOF_Extract_Field_at_Interface/ThirdParty/jsoncons"]
-	path = VOF_Extract_Field_at_Interface/ThirdParty/jsoncons
+	path = ThirdParty/jsoncons
 	url = https://github.com/danielaparker/jsoncons.git
+[submodule "ThirdParty/eigen-git-mirror"]
+	path = ThirdParty/eigen-git-mirror
+	url = https://github.com/eigenteam/eigen-git-mirror.git
