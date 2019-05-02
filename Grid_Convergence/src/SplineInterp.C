@@ -1,9 +1,9 @@
 #include<SplineInterp.H>
 
-SplineInterp::SplineInterp(const VectorXd& xpts, const VectorXd& ypts)
-    : x_min(xpts.minCoeff()), x_max(xpts.maxCoeff()),
+SplineInterp::SplineInterp(const VectorXd& xpts, const VectorXd& ypts, double xmin, double xmax)
+    : x_min(xmin), x_max(xmax),
       spline(Eigen::SplineFitting<Eigen::Spline<double,1>>::Interpolate(
-        ypts.transpose(),std::min<int>(xpts.rows()-1,3),scaled_values(xpts)))
+        ypts.transpose(),3,scaled_values(xpts)))
     {};
 
 double SplineInterp::operator()(double x) const

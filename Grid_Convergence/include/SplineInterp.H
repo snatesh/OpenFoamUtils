@@ -10,7 +10,7 @@ class SplineInterp
 {
   public:
     // create interpolant for func sampled at xpts with values ypts
-    SplineInterp(const VectorXd& xpts, const VectorXd& ypts);
+    SplineInterp(const VectorXd& xpts, const VectorXd& ypts, double xmin, double xmax);
     ~SplineInterp(){};
     // evaluate interpolant at x 
     double operator()(double x) const;

@@ -39,7 +39,9 @@ class ContourInterface
     // contour by contour_val, put y coordinates into heights, 
     // and x coordinates into xaxis
     void getContour(std::vector<double>& heights, std::vector<double>& xaxis);
-    
+    // contour by counter_val, put y coordinates into heights,
+    // sqrt(x^2+z^2) coordinates into raxis
+    void getRadialContour(std::vector<double>& heights, std::vector<double>& raxis);    
     
     // contour by contour_val, put y coords into heights, 
     // data with name dataName into datas and x coords into xaxis
@@ -48,6 +50,7 @@ class ContourInterface
     
     // contour by contour_val, put y coords into heights, 
     // data with names dataName into datas and x coords into xaxis
+    // map is used to keep axes and data sorted
     void getContour(std::vector<double>& heights, std::vector<std::vector<double>>& datas, 
                     std::vector<double>& xaxis);
     // step reader and contour filter to t=time

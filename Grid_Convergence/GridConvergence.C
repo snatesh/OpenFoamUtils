@@ -17,8 +17,8 @@ struct Args
   int mCaseType;
   int fCaseType;
   // refinement ratios
-  //double mRefRatio;
-  //double fRefRatio;
+  double cmRefRatio;
+  double mfRefRatio;
   // start, stride and end for frames
   // currently, assumes all cases have same write intervals and total time
   double beg;
@@ -30,6 +30,10 @@ struct Args
   double contour_val;
   // names of solution arrays
   std::vector<std::string> dataNames;
+  // plot settings
+  std::string title;
+  int width;
+  int height;
 };
 
 // trim extension off of filename 
@@ -68,8 +72,8 @@ std::unique_ptr<Args> readJSON(jsoncons::json inputjson)
   args->cCaseType = !cCaseType.compare("reconstructed") ? 1 : 0;
   args->mCaseType = !mCaseType.compare("reconstructed") ? 1 : 0;
   args->fCaseType = !fCaseType.compare("reconstructed") ? 1 : 0;
-  //args->mRefRatio = mCaseInp["Refinement Ratio"].as<double>();
-  //args->fRefRatio = mCaseInp["Refinement Ratio"].as<double>();
+  args->cmRefRatio = mCaseInp["Refinement Ratio"].as<double>();
+  args->mfRefRatio = fCaseInp["Refinement Ratio"].as<double>();
   args->beg = inputjson["Times"]["start"].as<double>();    
   args->stride = inputjson["Times"]["stride"].as<double>();
   args->end = inputjson["Times"]["end"].as<double>();
@@ -81,6 +85,9 @@ std::unique_ptr<Args> readJSON(jsoncons::json inputjson)
   {
     args->dataNames.push_back(data.as<std::string>());
   }
+  args->title = inputjson["Plot"]["title"].as<std::string>();
+  args->width = inputjson["Plot"]["width"].as<int>();
+  args->height = inputjson["Plot"]["height"].as<int>();
   return args;
 }
 
@@ -111,23 +118,119 @@ int main(int argc, char* argv[])
   inputStream >> inputjson;
   std::unique_ptr<Args> args = readJSON(inputjson);
   std::unique_ptr<OrderOfAccuracy> oacObj = 
-    OrderOfAccuracy::Create(args->cCase,args->mCase,args->fCase,args->cCaseType,args->mCaseType,
-                            args->fCaseType, args->contourArray,args->contour_val,args->dataNames);
-
+    OrderOfAccuracy::Create(args->cCase,args->mCase,args->fCase,args->cCaseType,
+                            args->mCaseType,args->fCaseType, args->contourArray,
+                            args->contour_val,args->dataNames,args->cmRefRatio,
+                            args->mfRefRatio);
+  std::cout << args->cmRefRatio << " " << args->mfRefRatio << std::endl;
   double nT = (args->end-args->beg)/args->stride;
-  std::vector<std::vector<double>> oac; oac.resize(nT);
-  std::vector<std::vector<double>> asymp; asymp.resize(nT);
+  std::vector<double> oac; oac.resize(nT+1);
+  std::vector<double> asymp; asymp.resize(nT+1);
+  int nplts = args->dataNames.size()+1;
+  std::vector<std::vector<double>> diffsCM(nplts);
+  std::vector<std::vector<double>> diffsMF(nplts);
+  std::vector<double> times;
+  plt::figure();
+  plt::figure_size(args->width,args->height);
+  std::string figName("figFrame"); 
   for (int i = 0; i <= nT; ++i)
   {
     double time = i*args->stride+args->beg;
+    std::cout << "TIME : " << time << std::endl;
     oacObj->stepTo(time);
-    oac[i] = oacObj->getOAC();
-    asymp[i] = oacObj->getAsymp();
-    std::vector<double> grid = toCVec(oacObj->getFuncGrid());
-    std::vector<double> data = toCVec(oacObj->getfSpline0());
-    plt::clf;
-    plt::plot(grid,data); 
-    plt::pause(0.001);
+    times.push_back(time);
+
+      //plt::figure_size(800,600);
+    int k = 0;
+    plt::clf();
+    for (int j = 0; j < nplts;++j)
+    {
+      //oac[i] = oacObj->getOAC(j);
+      //asymp[i] = oacObj->getAsymp(j);
+      //VectorXd cData = oacObj->getCSpline(j);
+      //VectorXd mData = oacObj->getMSpline(j);
+      //VectorXd fData = oacObj->getFSpline(j);
+      //VectorXd diffCM = (cData - mData).array().abs();
+      //VectorXd diffMF = (fData - mData).array().abs();
+      //VectorXd axis = oacObj->getFuncGrid();
+      VectorXd cData = oacObj->getCData(j);
+      VectorXd mData = oacObj->getMData(j);
+      VectorXd fData = oacObj->getFData(j);
+      VectorXd caxis = oacObj->getCAxis();
+      VectorXd maxis = oacObj->getMAxis();
+      VectorXd faxis = oacObj->getFAxis();
+      //VectorXd relDiffCM, relDiffMF; 
+      //int curr1 = 0; int curr2 = 0;
+      //for (int k = 0; k < diffCM.size(); ++k)
+      //{
+      //  if (mData(k) > 1e-2)
+      //  {
+      //    relDiffCM.conservativeResize(curr1+1);
+      //    relDiffCM(curr1) = abs(diffCM(k)/mData(k));
+      //    curr1 += 1;
+      //  }
+      //  if (fData(k) > 1e-2)
+      //  {
+      //    relDiffMF.conservativeResize(curr2+1);
+      //    relDiffMF(curr2) = abs(diffMF(k)/fData(k));
+      //    curr2 += 1;
+      //  }
+      //}
+      //double max = 
+      //  std::max<double>(cData.maxCoeff(),std::max<double>(mData.maxCoeff(),fData.maxCoeff())); 
+      //std::cout << diffCM.maxCoeff() << " " << diffMF.maxCoeff() << std::endl;
+      ////relDiffCM = relDiffCM/max;
+      ////relDiffMF = relDiffMF/max;
+      //diffCM = diffCM/max;
+      //diffMF = diffMF/max;
+      //diffsCM[j].push_back(diffCM.lpNorm<1>()); 
+      //diffsMF[j].push_back(diffMF.lpNorm<1>()); 
+
+
+      //plt::subplot(nplts,1,j+1);
+      //plt::named_semilogy("coarse-medium",toCVec(axis),toCVec(diffCM),"r-");
+      //plt::legend();
+      //plt::subplot(nplts,1,j+1);
+      //plt::named_semilogy("medium-fine",toCVec(axis),toCVec(diffMF),"b-");
+      //plt::legend();
+      plt::subplot(nplts,1,j+1);
+      plt::named_plot("coarse", toCVec(caxis), toCVec(cData),"b.-");
+      plt::grid(true);
+      plt::legend();
+      plt::subplot(nplts,1,j+1);
+      plt::named_plot("medium", toCVec(maxis), toCVec(mData),"r.-");
+      plt::grid(true);
+      plt::legend();
+      plt::subplot(nplts,1,j+1);
+      plt::named_plot("fine", toCVec(faxis), toCVec(fData),"g.-");
+      plt::xlim(0,100000);
+      plt::ylim(-4000,3000);
+      std::stringstream ss; ss << args->title << ", Time="<<time;
+      plt::title(ss.str());
+      if (j == 0)
+        plt::ylabel("Height (m)");
+      else
+        plt::ylabel(args->dataNames[j-1]);
+      plt::xlabel("x (m)");
+      plt::legend();
+
+    }
+    //for (int j = 0; j < nplts; ++j)
+    //{
+    //  plt::subplot(nplts,1,j+1);
+    //  plt::named_semilogy("coarse-medium",times,diffsCM[j],"r-");
+    //  plt::subplot(nplts,1,j+1);
+    //  plt::named_semilogy("medium-fine",times,diffsMF[j],"b-");
+    //  plt::xlabel("Time");
+    //  plt::legend();
+    //}
+    std::stringstream ss; 
+    ss << figName << std::internal << setw(3) << setfill('0') << i+1 << ".png"; 
+    plt::save(ss.str());
+    plt::pause(0.0001);
+
   }
+
+
   return 0;
 }
