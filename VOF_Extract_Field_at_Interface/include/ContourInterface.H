@@ -9,6 +9,7 @@
 #include <vtkMultiBlockDataSet.h>
 #include <vtkDoubleArray.h>
 #include <vtkPolyData.h>
+#include <vtkCellCenters.h>
 #include <string>
 #include <sstream>
 #include <ostream>
@@ -40,8 +41,16 @@ class ContourInterface
     // and x coordinates into xaxis
     void getContour(std::vector<double>& heights, std::vector<double>& xaxis);
     // contour by counter_val, put y coordinates into heights,
-    // sqrt(x^2+z^2) coordinates into raxis
+    // r = sqrt(x^2+z^2) coordinates into raxis
     void getRadialContour(std::vector<double>& heights, std::vector<double>& raxis);    
+    // contour by contour_val, put inverse weighted distance average of y coordinates
+    // at given radial distance, with respect to mean of coordinates, into heights
+    // then, do another round of smoothing on the heights array wrt nearest neighbors
+    // in (r,h) space. lastly, r= sqrt(x^2+z^2) coordinates go into raxis
+		void getSmoothRadialContour(std::vector<double>& heights, 
+																std::vector<double>& smoothHeights,
+																std::vector<double>& raxis,
+																std::vector<double>& raxisSort);    
     
     // contour by contour_val, put y coords into heights, 
     // data with name dataName into datas and x coords into xaxis
